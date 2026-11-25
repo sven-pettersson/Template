@@ -11,7 +11,7 @@ En minimal fullstack-mall att bygga vidare på: React-frontend, FastAPI-backend 
 
 ## Struktur
 - `docker-compose.yml`, `.env.example` – tjänsterna `db`, `backend`, `frontend` och deras inställningar
-- `code/backend/` – FastAPI-appen (`app/`), Dockerfile och requirements
+- `code/backend/` – FastAPI-appen (`app/`), Dockerfile och requirements. Inloggning: `settings.py` (env), `features.py` (växlar), `security.py` (hashning, tokens), `auth.py` (Bearer-dependencies)
 - `code/frontend/` – React-appen (`src/`), Dockerfile och `nginx.conf`
 - `code/src/` – fristående programkod (kvittoräknaren)
 - `code/tests/` – tester (pytest hittar modulerna i `src/`, `libs/`, `settings/` och `backend/` via `pyproject.toml`)
@@ -49,7 +49,8 @@ En minimal fullstack-mall att bygga vidare på: React-frontend, FastAPI-backend 
 ## Skills för stacken
 - Projektets skills finns i `.claude/skills/`: `/stack`, `/stack-test`, `/diagnose`, `/db`, `/seed`, `/db-snapshot`, `/db-reset` och `/new-resource`. Hjälpskriptet är `.claude/scripts/stack.py`. Se tabellen i readme.md.
 - Använd `/db` i läsläge för att titta i databasen. Skriv bara med `/db --write` efter mitt godkännande.
-- Nya resurser följer mönstret för `items`: modell, scheman, `app/routers/<namn>.py`, tester och `src/components/<Namn>.jsx`.
+- Nya resurser följer mönstret för `items`: modell, scheman, `app/routers/<namn>.py`, tester och `src/components/<Namn>.jsx`. Inkludera routern med `dependencies=[Depends(require_login)]` så att den skyddas när inloggning är på.
+- Testfixturerna finns i `code/tests/api_fixtures.py` (laddas av `conftest.py` när backendberoendena finns).
 - Stoppa eller ta aldrig bort containrar från andra compose-projekt. Hooken docker_guard stoppar det.
 
 ## Kommandon

@@ -30,11 +30,12 @@ Mönstret som ska följas är `items`. Läs de här filerna innan du skriver nå
    - `GET "/{id}"` ger 404 med `HTTPException` om raden saknas
    - `DELETE "/{id}"` ger 204
    - PUT/PATCH och search bara om användaren vill ha dem
-4. `main.py`: `from app.routers import <plural>` och `app.include_router(<plural>.router)`.
+4. `main.py`: `from app.routers import <plural>` och `app.include_router(<plural>.router, dependencies=[Depends(require_login)])`, så att resursen kräver Bearer-token när inloggning är påslagen.
 5. **Inga migreringar finns.** `create_all` skapar nya tabeller men ändrar aldrig befintliga. Säg det om resursen ändrar en befintlig tabell, och föreslå `/db-reset` i dev.
 
 ## 3. Tester – `code/tests/test_<plural>_api.py`
-- Återanvänd fixturerna `client` och `db_client`. Flytta dem till `code/tests/conftest.py` första gången en andra API-testfil skapas, och anpassa `DELETE FROM` så att alla tabeller töms.
+- Återanvänd fixturerna i `code/tests/api_fixtures.py` (`client`, `db_client`, `db_session`, `auth_on`, `make_user`, `login`). Lägg till den nya tabellen i `DELETE FROM`-raderna i `db_session`.
+- Testa också att endpointsen ger 401 utan token när inloggning är på (`auth_on`), och att de fungerar med `login(...)`.
 - Testa:
   - skapa och lista
   - hämta en rad och 404 när den saknas

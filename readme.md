@@ -46,6 +46,8 @@ Tjänsterna når varandra via sina namn på Compose-nätverket (t.ex. `db:5432` 
 - Koden ligger i `code/backend/app/`:
   - `main.py`: appen, `/api/health` och registrering av routers
   - `routers/items.py`: endpoints för items (en fil per resurs)
+  - `routers/auth.py`, `routers/users.py`, `routers/config.py`: inloggning, användarhantering och växlar (se "Inloggning och användare")
+  - `settings.py`, `features.py`, `security.py`, `auth.py`: inställningar från env, växlar, lösenordshashning och Bearer-skydd
   - `db.py`: anslutning, session och uppstart av schemat
   - `models.py`: SQLAlchemy-modeller
   - `schemas.py`: Pydantic-modeller, som också syns i Swagger
@@ -59,6 +61,15 @@ Tjänsterna når varandra via sina namn på Compose-nätverket (t.ex. `db:5432` 
   | GET | `/api/items` | Lista alla items |
   | POST | `/api/items` | Skapa ett item (`name`, valfri `description` och `embedding`) |
   | POST | `/api/items/search` | De närmaste items till en vektor, sorterade på cosinusavstånd |
+  | GET | `/api/config` | Miljö och växlar (alltid öppen) |
+  | PUT | `/api/config` | Slå på eller av växlarna. Bara när `APP_ENV` är `local` eller `test`, annars 404 |
+  | POST | `/api/auth/login` | Logga in med `email` och `password` och få en token |
+  | POST | `/api/auth/logout` | Avsluta sessionen |
+  | GET | `/api/auth/me` | Den inloggade användaren |
+  | GET, POST | `/api/users` | Lista och skapa användare (admin) |
+  | DELETE | `/api/users/{id}` | Ta bort en användare (admin). Root-admin och den egna användaren kan inte tas bort |
+
+  Items-endpoints kräver `Authorization: Bearer <token>` när inloggning är påslagen.
 
 - Beroenden finns i `requirements.txt`. Testberoenden finns i `requirements-dev.txt`.
 
@@ -86,8 +97,36 @@ Läses från `.env` i roten (se `.env.example`). Alla har standardvärden.
 | `DB_PORT` | `5432` | Port på värden för databasen |
 | `BACKEND_PORT` | `8000` | Port på värden för backend |
 | `FRONTEND_PORT` | `3000` | Port på värden för frontend |
+| `APP_ENV` | `local` | `local`, `test`, `staging` eller `production`. Config-sidan finns bara i `local` och `test` |
+| `AUTH_ENABLED` | `false` | Inloggning och sessioner. I `local`/`test` kan config-sidan ändra den |
+| `USER_MANAGEMENT_ENABLED` | `false` | Användarhantering. Kräver inloggning |
+| `SESSION_TTL_MINUTES` | `60` | Hur länge en token gäller |
+| `ADMIN_EMAIL` | `admin@example.com` | Root-admin, skapas eller uppdateras när backend startar |
+| `ADMIN_PASSWORD` | tomt | Root-admins lösenord. Tomt betyder att ingen root-admin skapas |
 
 Backend läser `DATABASE_URL`, som Compose bygger ihop från variablerna ovan.
+
+## Inloggning och användare
+
+Två valbara funktioner, båda avslagna från början:
+
+- **Inloggning och sessioner:** e-post och lösenord. `POST /api/auth/login` ger en slumpad token som gäller i `SESSION_TTL_MINUTES` minuter. Den skickas som `Authorization: Bearer <token>`. I databasen sparas bara en sha256-hash av token, och lösenord hashas med scrypt.
+- **Användarhantering:** admins skapar och tar bort användare på fliken Users. Kräver att inloggning är på.
+
+**Slå på och av:**
+- I `local` och `test` finns fliken **Config** i frontend (`PUT /api/config`). Valet sparas i tabellen `app_settings` och går före `.env`.
+- I `staging` och `production` finns ingen config-sida. Där gäller bara `AUTH_ENABLED` och `USER_MANAGEMENT_ENABLED`.
+
+**Staging och produktion:** utgå från `.env.production.example`. Den har `APP_ENV=production`, påslagen inloggning och kortare TTL, och platshållare för lösenorden. För staging byter du till `APP_ENV=staging`.
+
+**Root-admin:** sätt `ADMIN_EMAIL` och `ADMIN_PASSWORD` i `.env`. Kontot skapas när backend startar, och lösenordet uppdateras om du ändrar det i `.env`. Root-admin kan inte tas bort.
+
+```bash
+TOKEN=$(curl -s -X POST localhost:8000/api/auth/login -H "Content-Type: application/json"   -d '{"email":"admin@example.com","password":"change-me"}' | python -c "import json,sys; print(json.load(sys.stdin)['access_token'])")
+curl -H "Authorization: Bearer $TOKEN" localhost:8000/api/items
+```
+
+I Swagger loggar du in med `/api/auth/login`, klickar på **Authorize** och klistrar in token.
 
 ## Projektstruktur
 
