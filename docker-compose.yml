@@ -22,6 +22,12 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-app}
       EMBEDDING_DIM: ${EMBEDDING_DIM:-3}
+      APP_ENV: ${APP_ENV:-local}
+      AUTH_ENABLED: ${AUTH_ENABLED:-false}
+      USER_MANAGEMENT_ENABLED: ${USER_MANAGEMENT_ENABLED:-false}
+      SESSION_TTL_MINUTES: ${SESSION_TTL_MINUTES:-60}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:

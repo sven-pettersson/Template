@@ -2,54 +2,18 @@
 
 The health and validation tests run without a database. Tests that touch
 PostgreSQL use DATABASE_URL and are skipped when no database is reachable.
-Every database test runs inside a transaction that is rolled back, so no
-data is left behind.
+The fixtures `client` and `db_client` live in conftest.py. Login is off by
+default, so the item endpoints are open here.
 """
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import text
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import Session
 
-from app.db import EMBEDDING_DIM, engine, get_db, init_db
-from app.main import app
+from app.db import EMBEDDING_DIM
 
 
 def vector(*values: float) -> list[float]:
     """Pad values with zeros up to EMBEDDING_DIM."""
     return list(values) + [0.0] * (EMBEDDING_DIM - len(values))
-
-
-@pytest.fixture
-def client():
-    # No `with` block: the lifespan (init_db) is not run, so no database is needed.
-    yield TestClient(app)
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture
-def db_client(client):
-    try:
-        init_db()
-        connection = engine.connect()
-    except OperationalError:
-        pytest.skip("PostgreSQL is not reachable via DATABASE_URL")
-
-    transaction = connection.begin()
-    session = Session(bind=connection, join_transaction_mode="create_savepoint")
-    session.execute(text("DELETE FROM items"))
-
-    def override_get_db():
-        yield session
-
-    app.dependency_overrides[get_db] = override_get_db
-    try:
-        yield client
-    finally:
-        session.close()
-        transaction.rollback()
-        connection.close()
 
 
 def test_health(client):
